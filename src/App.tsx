@@ -50,14 +50,13 @@ function App() {
 
     setStatus('変換中...');
     try {
-      const proxyUrl = 'https://api.allorigins.win/raw?url=';
       const apiUrl = 'https://jlp.yahooapis.jp/FuriganaService/V2/furigana';
-      
-      const response = await fetch(proxyUrl + apiUrl, {
+      const urlWithAppId = `${apiUrl}?appid=${encodeURIComponent(YAHOO_CLIENT_ID)}`;
+
+      const response = await fetch(urlWithAppId, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'User-Agent': `Yahoo AppID: ${YAHOO_CLIENT_ID}`,
         },
         body: JSON.stringify({
           "id": new Date().getTime().toString(),
@@ -74,8 +73,7 @@ function App() {
         throw new Error(`APIエラー: ${response.status} ${response.statusText}`);
       }
 
-      const responseText = await response.text();
-      const data = JSON.parse(responseText);
+      const data = await response.json();
 
       if (data.error) {
         throw new Error(`APIからのエラー: ${data.error.message} (Code: ${data.error.code})`);
