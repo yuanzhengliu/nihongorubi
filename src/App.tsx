@@ -51,12 +51,12 @@ function App() {
     setStatus('変換中...');
     try {
       const apiUrl = 'https://jlp.yahooapis.jp/FuriganaService/V2/furigana';
-      const urlWithAppId = `${apiUrl}?appid=${encodeURIComponent(YAHOO_CLIENT_ID)}`;
 
-      const response = await fetch(urlWithAppId, {
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${YAHOO_CLIENT_ID}`,
         },
         body: JSON.stringify({
           "id": new Date().getTime().toString(),
