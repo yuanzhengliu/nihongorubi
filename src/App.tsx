@@ -50,7 +50,10 @@ function App() {
 
     setStatus('変換中...');
     try {
-      const response = await fetch('https://jlp.yahooapis.jp/FuriganaService/V2/furigana', {
+      const proxyUrl = 'https://api.allorigins.win/raw?url=';
+      const apiUrl = 'https://jlp.yahooapis.jp/FuriganaService/V2/furigana';
+      
+      const response = await fetch(proxyUrl + apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -71,7 +74,8 @@ function App() {
         throw new Error(`APIエラー: ${response.status} ${response.statusText}`);
       }
 
-      const data = await response.json();
+      const responseText = await response.text();
+      const data = JSON.parse(responseText);
 
       if (data.error) {
         throw new Error(`APIからのエラー: ${data.error.message} (Code: ${data.error.code})`);
