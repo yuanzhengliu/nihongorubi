@@ -1,70 +1,58 @@
 import { useState, useEffect, useRef } from 'react';
 
-declare global {
-  interface Window {
-    Kuroshiro: any;
-    kuromoji: any;
-    KuromojiAnalyzer: any;
-  }
-}
-
-type KuroshiroInstance = any;
-
 function App() {
   const [text, setText] = useState('日本語の文章をここに入力してください。\n吾輩は猫である。名前はまだ無い。');
   const [result, setResult] = useState('');
   const [status, setStatus] = useState('初期化中...');
-  const kuroshiroRef = useRef<KuroshiroInstance | null>(null);
+  const [isReady, setIsReady] = useState(false);
+  const workerRef = useRef<Worker | null>(null);
 
   useEffect(() => {
-    const initKuroshiro = async () => {
-      try {
-        setStatus('インスタンスを作成しています...');
-        const kuroshiro = new window.Kuroshiro.default();
-        kuroshiroRef.current = kuroshiro;
+    // Vite-specific syntax for creating a worker
+    const worker = new Worker(new URL('./worker.ts', import.meta.url), {
+      type: 'module',
+    });
+    workerRef.current = worker;
 
-        // The analyzer constructor might also be on the .default property
-        const analyzer = new window.KuromojiAnalyzer({
-          dictPath: 'https://cdn.jsdelivr.net/npm/kuromoji@0.1.2/dict/',
-        });
-        
-        setStatus('辞書を読み込んでいます...');
-        await kuroshiro.init(analyzer);
-        
-        setStatus('準備完了');
-      } catch (err) {
-        console.error('Initialization failed:', err);
-        setStatus('エラー: 初期化に失敗しました。コンソールを確認してください。');
+    // Listen for messages from the worker
+    worker.onmessage = (event) => {
+      const { type, status: newStatus, payload } = event.data;
+
+      if (newStatus) {
+        setStatus(newStatus);
+      }
+      if (type === 'ready') {
+        setIsReady(true);
+      }
+      if (type === 'converted') {
+        setResult(payload);
+      }
+      if (type === 'error') {
+        console.error('Error from worker:', payload);
+        setStatus(`エラー: ${payload}`);
       }
     };
 
-    // Wait for all three libraries to be loaded from the CDN
-    const checkLibsAndInit = () => {
-      if (window.Kuroshiro && window.kuromoji && window.KuromojiAnalyzer) {
-        initKuroshiro();
-      } else {
-        setTimeout(checkLibsAndInit, 100);
-      }
-    };
-    
-    checkLibsAndInit();
+    // Start the initialization process in the worker
+    worker.postMessage({
+      type: 'init',
+      payload: {
+        dictPath: 'https://cdn.jsdelivr.net/npm/kuromoji@0.1.2/dict/',
+      },
+    });
 
+    // Cleanup worker on component unmount
+    return () => {
+      worker.terminate();
+    };
   }, []);
 
-  const handleConvert = async () => {
-    const kuroshiro = kuroshiroRef.current;
-    if (!kuroshiro || status !== '準備完了') return;
-
-    try {
-      const converted = await kuroshiro.convert(text, {
-        mode: 'furigana',
-        to: 'hiragana',
-      });
-      setResult(converted);
-    } catch (err) {
-      console.error('Conversion failed:', err);
-      setResult('変換中にエラーが発生しました。');
-    }
+  const handleConvert = () => {
+    if (!workerRef.current || !isReady) return;
+    workerRef.current.postMessage({
+      type: 'convert',
+      payload: { text },
+    });
   };
 
   const handleCopy = () => {
@@ -96,7 +84,7 @@ function App() {
       </div>
 
       <div className="controls">
-        <button onClick={handleConvert} disabled={status !== '準備完了'}>
+        <button onClick={handleConvert} disabled={!isReady}>
           ルビを振る
         </button>
         <button onClick={handleCopy} disabled={!result}>
