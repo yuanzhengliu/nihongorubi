@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
-// Store the Client ID provided by the user
-const YAHOO_CLIENT_ID = 'dj0yJmk9dzZUMkZVSDJqblBUJmQ9WVdrOWJEQlZibE5VTXpRbWNHbzlNQT09JnM9Y29uc3VtZXJzZWNyZXQmeD0zYQ--';
+// Store the Client ID provided by the user (now loaded from environment variables)
+const YAHOO_CLIENT_ID = import.meta.env.VITE_YAHOO_CLIENT_ID;
 
 /**
  * Parses the complex JSON response from the Yahoo API and converts it to an HTML string with <ruby> tags.
