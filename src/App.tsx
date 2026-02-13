@@ -1,58 +1,51 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 
 function App() {
   const [text, setText] = useState('日本語の文章をここに入力してください。\n吾輩は猫である。名前はまだ無い。');
   const [result, setResult] = useState('');
-  const [status, setStatus] = useState('初期化中...');
-  const [isReady, setIsReady] = useState(false);
-  const workerRef = useRef<Worker | null>(null);
+  const [status, setStatus] = useState('準備完了'); // App is ready immediately
 
-  useEffect(() => {
-    // Vite-specific syntax for creating a worker
-    const worker = new Worker(new URL('./worker.ts', import.meta.url), {
-      type: 'module',
-    });
-    workerRef.current = worker;
+  const handleConvert = async () => {
+    if (!text.trim()) {
+      setResult('テキストを入力してください。');
+      return;
+    }
 
-    // Listen for messages from the worker
-    worker.onmessage = (event) => {
-      const { type, status: newStatus, payload } = event.data;
+    setStatus('変換中...');
+    try {
+      const response = await fetch('https://api.furiousgana.com', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify([{ japanese: text }]),
+      });
 
-      if (newStatus) {
-        setStatus(newStatus);
+      if (!response.ok) {
+        throw new Error(`APIエラー: ${response.status} ${response.statusText}`);
       }
-      if (type === 'ready') {
-        setIsReady(true);
-      }
-      if (type === 'converted') {
-        setResult(payload);
-      }
-      if (type === 'error') {
-        console.error('Error from worker:', payload);
-        setStatus(`エラー: ${payload}`);
-      }
-    };
 
-    // Start the initialization process in the worker
-    worker.postMessage({
-      type: 'init',
-      payload: {
-        dictPath: 'https://cdn.jsdelivr.net/npm/kuromoji@0.1.2/dict/',
-      },
-    });
-
-    // Cleanup worker on component unmount
-    return () => {
-      worker.terminate();
-    };
-  }, []);
-
-  const handleConvert = () => {
-    if (!workerRef.current || !isReady) return;
-    workerRef.current.postMessage({
-      type: 'convert',
-      payload: { text },
-    });
+      const data = await response.json();
+      
+      // Assuming the response is an array and we need the first element's 'furigana' property
+      if (data && data.length > 0 && data[0].furigana) {
+        setResult(data[0].furigana);
+      } else {
+        // Fallback for unexpected API response structure
+        // Sometimes the API might return a different structure with a 'sentence' property
+        if (data && data.length > 0 && data[0].sentence) {
+           setResult(data[0].sentence);
+        } else {
+           throw new Error('APIからのレスポンス形式が不正です。');
+        }
+      }
+      setStatus('準備完了');
+    } catch (err) {
+      console.error('Conversion failed:', err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      setResult(`変換中にエラーが発生しました: ${errorMessage}`);
+      setStatus('エラー');
+    }
   };
 
   const handleCopy = () => {
@@ -84,7 +77,7 @@ function App() {
       </div>
 
       <div className="controls">
-        <button onClick={handleConvert} disabled={!isReady}>
+        <button onClick={handleConvert} disabled={status === '変換中...'}>
           ルビを振る
         </button>
         <button onClick={handleCopy} disabled={!result}>
