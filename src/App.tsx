@@ -50,9 +50,10 @@ function App() {
 
     setStatus('変換中...');
     try {
+      const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
       const apiUrl = 'https://jlp.yahooapis.jp/FuriganaService/V2/furigana';
-
-      const response = await fetch(apiUrl, {
+      
+      const response = await fetch(proxyUrl + apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
