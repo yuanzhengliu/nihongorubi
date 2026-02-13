@@ -13,7 +13,7 @@ function App() {
 
     setStatus('変換中...');
     try {
-      const response = await fetch('https://api.furiousgana.com', {
+      const response = await fetch('https://api.allorigins.win/raw?url=https://api.furiousgana.com', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -24,8 +24,9 @@ function App() {
       if (!response.ok) {
         throw new Error(`APIエラー: ${response.status} ${response.statusText}`);
       }
-
-      const data = await response.json();
+      
+      const responseText = await response.text();
+      const data = JSON.parse(responseText);
       
       // Assuming the response is an array and we need the first element's 'furigana' property
       if (data && data.length > 0 && data[0].furigana) {
